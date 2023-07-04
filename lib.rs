@@ -164,6 +164,17 @@ mod erc20 {
         assert_eq!(erc20.balance_of(accounts.alice), 10000 - 12);
         assert_eq!(erc20.balance_of(accounts.bob), 12);
       }
+
+      #[ink::test]
+      fn invalid_transfer_should_fail() {
+        let mut erc20 = Erc20::new(10000);
+        let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+        ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.bob);
+
+        let res = erc20.transfer(accounts.charlie, 12);
+        assert!(res.is_err());
+        assert_eq!(res, Err(Error::BalanceTooLow));
+      }
     }
 
 
