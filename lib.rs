@@ -189,7 +189,7 @@ mod erc20 {
         use super::*;
 
         /// A helper function used for calling contract messages.
-        use ink_e2e::build_message;
+        use ink_e2e::{build_message, subxt::client};
 
         /// The End-to-End test `Result` type.
         type E2EResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -197,56 +197,32 @@ mod erc20 {
         /// We test that we can upload and instantiate the contract using its default constructor.
         #[ink_e2e::test]
         async fn default_works(mut client: ink_e2e::Client<C, E>) -> E2EResult<()> {
-            // Given
-            let constructor = Erc20Ref::default();
+          let total_supply = 123;
+          let constructor = Erc20Ref::new(total_supply);
 
-            // When
-            let contract_account_id = client
-                .instantiate("erc20", &ink_e2e::alice(), constructor, 0, None)
-                .await
-                .expect("instantiate failed")
-                .account_id;
+          // When
+          let contract_account_id = client
+              .instantiate("erc20", &ink_e2e::alice(), constructor, 0, None)
+              .await
+              .expect("instantiate failed")
+              .account_id;
+          let alice_acc_id = ink_e2e::account_id(ink_e2e::AccountKeyring::Alice);
+          let bob_acc_id = ink_e2e::account_id(ink_e2e::AccountKeyring::Bob);
 
-            // Then
-            let get = build_message::<Erc20Ref>(contract_account_id.clone())
-                .call(|erc20| erc20.get());
-            let get_result = client.call_dry_run(&ink_e2e::alice(), &get, 0, None).await;
-            assert!(matches!(get_result.return_value(), false));
+          let transfer_message = build_message::<Erc20Ref>(contract_account_id.clone()).call(|erc20| erc20.transfer(bob_acc_id, 2));
 
-            Ok(())
+          let res = client.call(&ink_e2e::alice(), transfer_message, 0, None).await;
+
+          assert!(res.is_ok());
+
+          let balance_of_message = build_message::<Erc20Ref>(contract_account_id.clone()).call(|erc20| erc20.balance_of(alice_acc_id));
+          let balance_of_alice = client.call_dry_run(&ink_e2e::alice(), &balance_of_message, 0, None).await;
+            
+          assert_eq!(balance_of_alice.return_value(), 121);
+
+          Ok(())
+          // 报错，提示：erc20::e2e_tests::default_works' panicked at 'We should find a port before the reader ends'
         }
-
-        /// We test that we can read and write a value from the on-chain contract contract.
-        #[ink_e2e::test]
-        async fn it_works(mut client: ink_e2e::Client<C, E>) -> E2EResult<()> {
-            // Given
-            let constructor = Erc20Ref::new(false);
-            let contract_account_id = client
-                .instantiate("erc20", &ink_e2e::bob(), constructor, 0, None)
-                .await
-                .expect("instantiate failed")
-                .account_id;
-
-            let get = build_message::<Erc20Ref>(contract_account_id.clone())
-                .call(|erc20| erc20.get());
-            let get_result = client.call_dry_run(&ink_e2e::bob(), &get, 0, None).await;
-            assert!(matches!(get_result.return_value(), false));
-
-            // When
-            let flip = build_message::<Erc20Ref>(contract_account_id.clone())
-                .call(|erc20| erc20.flip());
-            let _flip_result = client
-                .call(&ink_e2e::bob(), flip, 0, None)
-                .await
-                .expect("flip failed");
-
-            // Then
-            let get = build_message::<Erc20Ref>(contract_account_id.clone())
-                .call(|erc20| erc20.get());
-            let get_result = client.call_dry_run(&ink_e2e::bob(), &get, 0, None).await;
-            assert!(matches!(get_result.return_value(), true));
-
-            Ok(())
-        }
+        
     }
 }
