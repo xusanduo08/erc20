@@ -3,25 +3,19 @@
 #[ink::contract]
 mod erc20 {
   use ink::storage::Mapping;
-
+  use trait_erc20::{ TERC20, Error, Result };
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
     #[ink(storage)]
     #[derive(Default)]
     pub struct Erc20 {
-        /// Stores a single `bool` value on the storage.
       total_supply: Balance,
       balances: Mapping<AccountId, Balance>,
       allowances: Mapping<(AccountId, AccountId), Balance>
     }
 
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-    pub enum Error {
-      BalanceTooLow,
-      AllowancesTooLow
-    }
+
 
     #[ink(event)]
     pub struct Transfer {
@@ -37,54 +31,18 @@ mod erc20 {
       value: Balance,
     }
 
-    type Result<T> = core::result::Result<T, Error>;
-
     impl Erc20 {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
-        #[ink(constructor)]
-        pub fn new(total_supply: Balance) -> Self {
-          let mut balances = Mapping::new();
-          balances.insert(Self::env().caller(), &total_supply);
-          Self::env().emit_event(Transfer{
-            from: None,
-            to: Some(Self::env().caller()),
-            value: total_supply,
-          });
-          Self { total_supply, balances, ..Default::default() }
-        }
-      
-      #[ink(message)]
-      pub fn total_supply(&self) -> Balance {
-        self.total_supply
-      }
-
-        /// A message that can be called on instantiated contracts.
-        /// This one flips the value of the stored `bool` from `true`
-        /// to `false` and vice versa.
-      #[ink(message)]
-      pub fn balance_of(&self, who: AccountId) -> Balance {
-        self.balances.get(&who).unwrap_or_default()
-      }
-
-      #[ink(message)]
-      pub fn transfer(&mut self, to: AccountId, value: Balance) -> Result<()> {
-        let sender = self.env().caller();
-        
-        return self.transfer_helper(&sender, &to, value);
-      }
-
-      #[ink(message)]
-      pub fn transfer_from(&mut self, from: AccountId, to: AccountId, value: Balance) -> Result<()> {
-        let sender = self.env().caller();
-        let mut allowances = self.allowances.get(&(from, sender)).unwrap_or_default();
-
-        if allowances < value {
-          return Err(Error::AllowancesTooLow);
-        }
-
-        self.allowances.insert(&(from, sender), &(allowances - value));
-
-        return self.transfer_helper(&from, &to, value);
+      /// Constructor that initializes the `bool` value to the given `init_value`.
+      #[ink(constructor)]
+      pub fn new(total_supply: Balance) -> Self {
+        let mut balances = Mapping::new();
+        balances.insert(Self::env().caller(), &total_supply);
+        Self::env().emit_event(Transfer{
+          from: None,
+          to: Some(Self::env().caller()),
+          value: total_supply,
+        });
+        Self { total_supply, balances, ..Default::default() }
       }
 
       pub fn transfer_helper(&mut self, from: &AccountId, to: &AccountId, value: Balance) -> Result<()> {
@@ -106,9 +64,21 @@ mod erc20 {
 
         Ok(())
       }
+    }
+
+    impl TERC20 for Erc20 {
+      #[ink(message)]
+      fn total_supply(&self) -> Balance {
+        self.total_supply
+      }
 
       #[ink(message)]
-      pub fn approve(&mut self, to: AccountId, value: Balance) -> Result<()> { // 允许谁动用多少资金
+      fn balance_of(&self, who: AccountId) -> Balance {
+        self.balances.get(&who).unwrap_or_default()
+      }
+
+      #[ink(message)]
+      fn approve(&mut self, to: AccountId, value: Balance) -> Result<()> { // 允许谁动用多少资金
         let sender = self.env().caller();
         self.allowances.insert(&(sender, to), &value);
         
@@ -120,6 +90,29 @@ mod erc20 {
 
         Ok(())
       }
+
+      #[ink(message)]
+      fn transfer(&mut self, to: AccountId, value: Balance) -> Result<()> {
+        let sender = self.env().caller();
+        
+        return self.transfer_helper(&sender, &to, value);
+      }
+
+      #[ink(message)]
+      fn transfer_from(&mut self, from: AccountId, to: AccountId, value: Balance) -> Result<()> {
+        let sender = self.env().caller();
+        let mut allowances = self.allowances.get(&(from, sender)).unwrap_or_default();
+
+        if allowances < value {
+          return Err(Error::AllowancesTooLow);
+        }
+
+        self.allowances.insert(&(from, sender), &(allowances - value));
+
+        return self.transfer_helper(&from, &to, value);
+      }
+
+      
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
