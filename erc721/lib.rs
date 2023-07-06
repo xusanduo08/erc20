@@ -52,6 +52,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+pub use erc721::{ Erc721, Erc721Ref, TokenId };
+
 #[ink::contract]
 mod erc721 {
     use ink::storage::Mapping;
