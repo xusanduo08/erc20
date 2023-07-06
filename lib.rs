@@ -80,7 +80,7 @@ mod erc20 {
       #[ink(message)]
       fn approve(&mut self, to: AccountId, value: Balance) -> Result<()> { // 允许谁动用多少资金
         let sender = self.env().caller();
-        self.allowances.insert(&(sender, to), &value);
+        self.allowances.insert(&(sender, to), &value); // 允许to调用sender的value数字的金额
         
         self.env().emit_event(Approve {
           from: sender,
@@ -101,7 +101,7 @@ mod erc20 {
       #[ink(message)]
       fn transfer_from(&mut self, from: AccountId, to: AccountId, value: Balance) -> Result<()> {
         let sender = self.env().caller();
-        let mut allowances = self.allowances.get(&(from, sender)).unwrap_or_default();
+        let mut allowances = self.allowances.get(&(from, sender)).unwrap_or_default(); // 获取允许sender调用from的金额
 
         if allowances < value {
           return Err(Error::AllowancesTooLow);
