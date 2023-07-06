@@ -20,7 +20,8 @@
 
 ## 调用market 铸造erc721
 
-～～这块出错了，在erc20里approve了markets，但是依然没法dry run，待解决～～ ---- 本地节点部署错了
+<del>这块出错了，在erc20里approve了markets，但是依然没法dry run，待解决～～</del> 
+本地节点部署错了，花了一些时间去找问题
 <img width="1455" alt="image" src="https://github.com/xusanduo08/erc20/assets/17930163/58314128-d4be-432e-a444-96d0718963eb">
 
 在erc721中查询alice下的nft，可以看到数量是1
